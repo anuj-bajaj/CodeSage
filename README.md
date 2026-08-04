@@ -5,7 +5,7 @@
 CodeSage is a production-grade RAG (Retrieval-Augmented Generation) application that indexes GitHub repositories and answers natural-language questions about their code — every answer cites the exact file and line range it came from.
 
 🔗 **Live demo:** [code-sage-snowy.vercel.app](https://code-sage-snowy.vercel.app)
-📦 **Repository:** [github.com/Codificador-23/CodeSage](https://github.com/Codificador-23/CodeSage)
+📦 **Repository:** [github.com/Codificador-23/CodeSage](https://github.com/anuj-bajaj/CodeSage)
 
 ![CodeSage Landing Page](./screenshots/landing.png)
 
