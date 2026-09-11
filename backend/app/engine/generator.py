@@ -1,5 +1,4 @@
 from asyncio import base_events
-from asyncio import base_events
 import os
 from typing import TypedDict, List, Dict, Any, Annotated
 from langgraph.graph import StateGraph, END
@@ -16,7 +15,12 @@ class AgentState(TypedDict):
 
 class CodeGenerator:
     def __init__(self, retriever: Any):
-        self.llm = ChatGroq(model_name="llama-3.3-70b-versatile", streaming=True)
+        self.llm = ChatGroq(
+            model_name="openai/gpt-oss-120b",
+            streaming=True,
+            reasoning_format="hidden",   # suppress chain-of-thought, stream only the final answer
+            reasoning_effort="low",      # keep latency close to the old non-reasoning model
+        )
         self.retriever = retriever
         self.workflow = self._create_workflow()
 
@@ -78,5 +82,3 @@ class CodeGenerator:
         except Exception as e:
             print(f"Stream error: {str(e)}")
             yield {"type": "error", "data": str(e)}
-
-
