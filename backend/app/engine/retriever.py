@@ -1,7 +1,7 @@
 import os
 from typing import List, Dict, Any
 from qdrant_client import QdrantClient, models
-from qdrant_client.http.models import NamedVector, NamedSparseVector, SparseVector
+from qdrant_client.http.models import SparseVector
 from sentence_transformers import CrossEncoder
 from fastembed import SparseTextEmbedding
 
