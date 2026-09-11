@@ -31,6 +31,10 @@ async def chat(request: ChatRequest):
                 context = event["data"]
             elif event["type"] == "token":
                 answer_tokens.append(event["data"])
+            elif event["type"] == "error":
+                # Previously silently ignored, which returned a fake HTTP 200
+                # with an empty answer instead of surfacing the real failure.
+                raise Exception(event["data"])
 
         answer = "".join(answer_tokens)
 

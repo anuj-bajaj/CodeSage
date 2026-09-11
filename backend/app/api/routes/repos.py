@@ -1,8 +1,13 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Header, Depends
 from app.db.postgres import PostgresDB
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 import os
+
+def verify_admin_key(x_admin_key: str = Header(None)):
+    expected = os.getenv("ADMIN_API_KEY")
+    if not expected or x_admin_key != expected:
+        raise HTTPException(status_code=403, detail="Not authorized to perform this action.")
 
 router = APIRouter()
 db = PostgresDB()
@@ -92,7 +97,7 @@ async def get_repo_chunks(repo_url: str, page: int = Query(1, ge=1), paginate: b
 
 
 @router.delete("/repos/all")
-async def clear_all_repositories():
+async def clear_all_repositories(_: None = Depends(verify_admin_key)):
     """DANGER: Drop all DB records and recreate clean Qdrant collection scopes."""
     conn = await db.get_connection()
     qdrant = get_qdrant_client()
@@ -121,7 +126,7 @@ async def clear_all_repositories():
         await conn.close()
 
 @router.delete("/repos/{repo_url:path}")
-async def delete_repository(repo_url: str):
+async def delete_repository(repo_url: str, _: None = Depends(verify_admin_key)):
     """Delete a repository from PostgreSQL database and trace vector points in Qdrant."""
     conn = await db.get_connection()
     qdrant = get_qdrant_client()

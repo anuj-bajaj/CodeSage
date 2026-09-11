@@ -152,7 +152,7 @@ class CodeParser:
                 continue
             for file in files:
                 full_path = os.path.join(root, file)
-                relative_path = os.path.relpath(full_path, repo_path)
+                relative_path = os.path.relpath(full_path, repo_path).replace(os.sep, "/")
                 chunks = self.chunk_file(full_path)
                 for chunk in chunks:
                     chunk["file_path"] = relative_path

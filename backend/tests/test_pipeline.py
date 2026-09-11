@@ -3,7 +3,7 @@ import time
 import pytest
 import requests
 from ragas import evaluate
-from ragas.metrics import faithfulness, answer_relevancy, context_precision
+from ragas.metrics import faithfulness, AnswerRelevancy, context_precision
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.run_config import RunConfig
@@ -48,14 +48,26 @@ GROUND_TRUTH = [
     "The key dependencies of SQLModel are SQLAlchemy and Pydantic."
 ]
 
+# This test hits a live, deployed backend and will auto-ingest a repository
+# into it if not already present. That's appropriate for a deliberate live
+# evaluation run, but not something that should happen silently every time
+# someone runs `pytest`. Require an explicit opt-in.
+RUN_LIVE_EVAL = os.getenv("RUN_LIVE_EVAL") == "1"
+
+# Defaults to the deployed Space, but can be pointed at localhost or a
+# different deployment without editing this file.
+BACKEND_URL = os.getenv("CODESAGE_EVAL_BACKEND_URL", "https://codificador-23-codesage-backend.hf.space")
+EVAL_REPO_URL = os.getenv("CODESAGE_EVAL_REPO_URL", "https://github.com/tiangolo/sqlmodel")
+
+
 def setup_evaluation_data():
     """
     Checks health of the backend server.
     Ensures the SQLModel repository is ingested.
     Pipes the 5 questions through the live chat endpoint and extracts real answers and reasoning traces.
     """
-    backend_url = "https://codificador-23-codesage-backend.hf.space"
-    repo_url = "https://github.com/tiangolo/sqlmodel"
+    backend_url = BACKEND_URL
+    repo_url = EVAL_REPO_URL
 
     # 1. Ping /health or /api/health to ensure the backend is running
     print("Checking backend health status...")
@@ -131,7 +143,7 @@ def setup_evaluation_data():
             )
             chat_resp.raise_for_status()
             chat_data = chat_resp.json()
-            
+
             answer = chat_data.get("answer", "")
             reasoning_trace = chat_data.get("reasoning_trace", [])
             contexts = [trace.get("content", "") for trace in reasoning_trace]
@@ -151,11 +163,20 @@ def setup_evaluation_data():
     return eval_data
 
 
+@pytest.mark.skipif(
+    not RUN_LIVE_EVAL,
+    reason="Live evaluation against a deployed backend is opt-in. Set RUN_LIVE_EVAL=1 to run it."
+)
 def test_rag_pipeline_ragas_scores():
     """
     Runs RAGAS evaluation (faithfulness, answer relevancy, context precision)
     using Groq as the judge LLM and a local HuggingFace model for embeddings.
     Uses dynamically generated data from the live running backend.
+
+    This test calls a real, deployed backend (BACKEND_URL) and may ingest
+    a repository into it if not already indexed (EVAL_REPO_URL). It is
+    gated behind RUN_LIVE_EVAL=1 so it never runs accidentally as part of
+    a normal `pytest` invocation.
     """
     assert os.getenv("GROQ_API_KEY"), (
         "GROQ_API_KEY not found in environment. Check your .env file."
@@ -167,10 +188,12 @@ def test_rag_pipeline_ragas_scores():
     dataset = Dataset.from_dict(eval_data)
 
     judge_llm = LangchainLLMWrapper(ChatGroq(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         api_key=os.getenv("GROQ_API_KEY"),
         temperature=0,
         n=1,
+        reasoning_format="hidden",  # judge must see only the final verdict, not chain-of-thought
+        reasoning_effort="low",
     ))
 
     judge_embeddings = LangchainEmbeddingsWrapper(HuggingFaceEmbeddings(
@@ -179,9 +202,15 @@ def test_rag_pipeline_ragas_scores():
 
     print("Running RAGAS evaluation with Groq judge...")
 
+    # strictness=1 keeps this metric to a single LLM generation per answer
+    # instead of its default of 3. The default sends n=3 to the judge LLM,
+    # which Groq's current reasoning models (gpt-oss-120b, qwen3.6-27b, etc.)
+    # reject with "'n' : number must be at most 1".
+    answer_relevancy_metric = AnswerRelevancy(strictness=1)
+
     results = evaluate(
         dataset,
-        metrics=[faithfulness, answer_relevancy, context_precision],
+        metrics=[faithfulness, answer_relevancy_metric, context_precision],
         llm=judge_llm,
         embeddings=judge_embeddings,
         run_config=RunConfig(timeout=180, max_retries=5, max_workers=2),

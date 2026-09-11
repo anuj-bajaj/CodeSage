@@ -61,7 +61,7 @@ Most "chat with your codebase" demos split code into fixed-size text chunks and 
 | Reranking | `cross-encoder/ms-marco-MiniLM-L-6-v2` |
 | Vector database | Qdrant Cloud (hybrid dense + sparse collection) |
 | Relational database | PostgreSQL (Neon) |
-| LLM | Groq (`llama-3.3-70b-versatile`), streamed via LangChain/LangGraph |
+| LLM | Groq (`openai/gpt-oss-120b`), streamed via LangChain/LangGraph |
 | Backend hosting | Hugging Face Spaces (Docker) |
 | Frontend hosting | Vercel |
 
@@ -111,15 +111,15 @@ GitHub Repo URL
 
 ## Evaluation
 
-Retrieval and generation quality were evaluated with [RAGAS](https://github.com/explodinggym/ragas) against the live production deployment, using real questions run through the actual `/api/chat` endpoint (not synthetic/mocked data). Scores below are averaged across multiple live evaluation runs against the `sqlmodel` repository:
+Retrieval and generation quality were evaluated with [RAGAS](https://github.com/explodinggradients/ragas) against the live production deployment, using real questions run through the actual `/api/chat` endpoint (not synthetic/mocked data). Scores below are from a live evaluation run against the `sqlmodel` repository, using `openai/gpt-oss-120b` as both the production model and the RAGAS judge LLM:
 
 | Metric | Score |
 |---|---|
-| Faithfulness | ~0.85 |
-| Answer Relevancy | ~0.85 |
-| Context Precision | ~0.68 |
+| Faithfulness | ~0.73 |
+| Answer Relevancy | ~0.51 |
+| Context Precision | ~0.70 |
 
-*(Averaged from several live evaluation runs rather than a single pass — Groq's free-tier daily token quota made it difficult to complete every metric in one uninterrupted run, so scores were aggregated across successful evaluations over multiple sessions.)*
+*(Faithfulness is averaged across 4 of the 5 questions — one run returned an inconclusive result from the judge LLM and was excluded rather than counted as a failure. Answer Relevancy uses a single generated reverse-question per answer, `strictness=1`, since Groq's current reasoning models cap `n` at 1 — see `backend/tests/test_pipeline.py` for details.)*
 
 ---
 
@@ -134,25 +134,44 @@ This project is deployed entirely on free-tier infrastructure, by choice, withou
 
 ## Running Locally
 
-**Backend:**
+**Prerequisites:** Docker Desktop (for local Postgres + Qdrant), Python 3.11, Node.js.
+
+**1. Start local infrastructure** (from the project root, alongside `docker-compose.yml`):
+```bash
+docker compose up qdrant postgres -d
+```
+
+**2. Backend:**
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate       # Windows
+
+# Activate the virtual environment:
+venv\Scripts\activate.bat      # Windows, cmd.exe
+.\venv\Scripts\Activate.ps1    # Windows, PowerShell
+source venv/bin/activate       # macOS / Linux
+
 pip install -r requirements.txt
-# create a .env file with QDRANT_URL, QDRANT_API_KEY, GROQ_API_KEY, DATABASE_URL, FRONTEND_URL
-uvicorn main:app --reload
+# create a .env file with:
+#   QDRANT_URL, QDRANT_API_KEY, GROQ_API_KEY, DATABASE_URL,
+#   FRONTEND_URL, ADMIN_API_KEY
+uvicorn main:app --reload --port 8000
 ```
 
-**Frontend:**
+**3. Frontend** (in a separate terminal):
 ```bash
 cd frontend
 npm install
+# create a .env.local file with:
+#   VITE_API_URL=http://localhost:8000
+#   VITE_ADMIN_KEY=<same value as backend's ADMIN_API_KEY>
 npm run dev
 ```
+
+The app will be available at `http://localhost:5173`.
 
 ---
 
 ## License
 
-MIT
+MIT — see [LICENSE](./LICENSE).

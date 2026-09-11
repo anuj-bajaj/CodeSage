@@ -33,7 +33,7 @@ class CodeCloner:
             file_count = sum([len(files) for r, d, files in os.walk(temp_dir)])
             if file_count > 5000:
                 shutil.rmtree(temp_dir)
-                raise Exception(f"Repository exceeds 500 files limit (Found {file_count}).")
+                raise Exception(f"Repository exceeds 5000 files limit (Found {file_count}).")
 
             return temp_dir
         except Exception as e:

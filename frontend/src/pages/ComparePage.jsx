@@ -3,6 +3,7 @@ import { API_BASE_URL } from '../config'
 import { Link } from 'react-router-dom'
 import { Folder, Send, MessageSquare, AlertCircle, RefreshCw, Trash2, ArrowRight } from 'lucide-react'
 import PageGlow from '../components/PageGlow'
+import { marked } from 'marked'
 
 const ComparePage = () => {
     const [repos, setRepos] = useState([])
@@ -307,7 +308,14 @@ const ComparePage = () => {
                                                 whiteSpace: 'pre-wrap',
                                                 lineHeight: '1.5'
                                             }}>
-                                                {msg.content}
+                                                {isUser ? (
+                                                    msg.content
+                                                ) : (
+                                                    <div
+                                                        className="markdown-content"
+                                                        dangerouslySetInnerHTML={{ __html: (() => { try { return marked.parse(msg.content || "") } catch (e) { return msg.content || "" } })() }}
+                                                    />
+                                                )}
 
                                                 {!isUser && msg.sources && msg.sources.length > 0 && (
                                                     <div style={{ marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '8px' }}>
@@ -404,7 +412,14 @@ const ComparePage = () => {
                                                 whiteSpace: 'pre-wrap',
                                                 lineHeight: '1.5'
                                             }}>
-                                                {msg.content}
+                                                {isUser ? (
+                                                    msg.content
+                                                ) : (
+                                                    <div
+                                                        className="markdown-content"
+                                                        dangerouslySetInnerHTML={{ __html: (() => { try { return marked.parse(msg.content || "") } catch (e) { return msg.content || "" } })() }}
+                                                    />
+                                                )}
 
                                                 {!isUser && msg.sources && msg.sources.length > 0 && (
                                                     <div style={{ marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '8px' }}>

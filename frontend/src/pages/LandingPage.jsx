@@ -83,7 +83,7 @@ const LandingPage = () => {
                             <ArrowRight size={16} />
                         </Link>
 
-                        <a href="https://github.com/Codificador-23/CodeSage" target="_blank" rel="noopener noreferrer" style={{
+                        <a href="https://github.com/anuj-bajaj/CodeSage" target="_blank" rel="noopener noreferrer" style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',

@@ -110,7 +110,19 @@ export const AppProvider = ({ children }) => {
             setIngestStatus("Cloning repository in background...")
             setProgress(10)
 
+            let pollAttempts = 0
+            const maxPollAttempts = 150 // 150 * 2s = 5 minutes
+
             const pollInterval = setInterval(async () => {
+                pollAttempts++
+                if (pollAttempts > maxPollAttempts) {
+                    clearInterval(pollInterval)
+                    setError("Indexing is taking much longer than expected, or the server may have restarted mid-process. Please try again.")
+                    setIsIngesting(false)
+                    setIngestStatus("")
+                    return
+                }
+
                 try {
                     const statusRes = await fetch(`${API_BASE_URL}/api/ingest/status/${repoUrl}`)
                     if (!statusRes.ok) {
@@ -369,7 +381,8 @@ export const AppProvider = ({ children }) => {
     const deleteRepo = async (repoUrl) => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/repos/${encodeURIComponent(repoUrl)}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: { 'X-Admin-Key': import.meta.env.VITE_ADMIN_KEY }
             })
             if (res.ok) {
                 setRepos(prev => prev.filter(r => r !== repoUrl))
@@ -400,7 +413,8 @@ export const AppProvider = ({ children }) => {
     const clearAllData = async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/repos/all`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: { 'X-Admin-Key': import.meta.env.VITE_ADMIN_KEY }
             })
             if (res.ok) {
                 setRepos([])
